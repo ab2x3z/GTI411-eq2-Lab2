@@ -176,7 +176,7 @@ class Ui_Lab2_Window(object):
 
     def applyCanny(self):
         if(self.imageAdded):
-            blurred = cv2.GaussianBlur(self.src, (7, 7), 0)
+            blurred = cv2.GaussianBlur(self.src, (5, 5), 0)
             nameFile = 'blurred.jpg' if self.isJpg else 'blurred.png'
             cv2.imwrite(nameFile, blurred)
             blurredPixmap = QPixmap(nameFile)
@@ -195,6 +195,55 @@ class Ui_Lab2_Window(object):
             cv2.imwrite(nameFile, sobelY)
             sobelYPixmap = QPixmap(nameFile)
             self.label_26.setPixmap(sobelYPixmap)
+
+            #https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
+            def non_max_suppression(img, D):
+                # Get the image shape and create an output array
+                M, N = img.shape
+                out = np.zeros((M, N), dtype=np.int32)
+
+                # Convert angle in degrees to radians
+                angle = D * 180. / np.pi
+                angle[angle < 0] += 180
+
+                # Perform non-maximum suppression
+                for i in range(1, M - 1):
+                    for j in range(1, N - 1):
+                        q = 255
+                        r = 255
+
+                        # Find the edge direction
+                        if (0 <= angle[i, j] < 22.5) or (157.5 <= angle[i, j] <= 180):
+                            q = img[i, j + 1]
+                            r = img[i, j - 1]
+                        elif 22.5 <= angle[i, j] < 67.5:
+                            q = img[i + 1, j - 1]
+                            r = img[i - 1, j + 1]
+                        elif 67.5 <= angle[i, j] < 112.5:
+                            q = img[i + 1, j]
+                            r = img[i - 1, j]
+                        elif 112.5 <= angle[i, j] < 157.5:
+                            q = img[i - 1, j - 1]
+                            r = img[i + 1, j + 1]
+
+                        # Compare the intensity of the current pixel with its neighbors
+                        if (img[i, j] >= q) and (img[i, j] >= r):
+                            out[i, j] = img[i, j]
+                        else:
+                            out[i, j] = 0
+
+                return out
+
+            # Find the gradient magnitude and direction
+            mag = np.sqrt(sobelX ** 2 + sobelY ** 2)
+            theta = np.arctan2(sobelY, sobelX)
+
+            nms = non_max_suppression(mag, theta)
+            nameFile = 'nms.jpg' if self.isJpg else 'nms.png'
+            cv2.imwrite(nameFile, nms)
+            nmsPixmap = QPixmap(nameFile)
+            self.label_33.setPixmap(nmsPixmap)
+
 
 
 

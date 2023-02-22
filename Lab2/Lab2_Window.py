@@ -7,12 +7,12 @@
 # WARNING! All changes made in this file will be lost!
 
 
-import cv2
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QDoubleValidator
 from PyQt5.QtWidgets import QFileDialog
 from PIL import Image
+import cv2
 
 class Ui_Lab2_Window(object):
     imageAdded = False
@@ -23,8 +23,22 @@ class Ui_Lab2_Window(object):
         self.src = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
         # afficher l'image originale
         pixmap = QPixmap(fileName)
-        self.label_3.setPixmap(pixmap)
-        self.imageAdded = True
+
+        if(self.tabWidget.currentIndex()) == 0:
+            self.label_3.setPixmap(pixmap)
+            self.imageAdded = True
+        elif(self.tabWidget.currentIndex()) == 1:
+            self.label_31.setPixmap(pixmap)
+            self.label_32.clear()
+            self.label_33.clear()
+            self.label_25.clear()
+            self.label_26.clear()
+            self.label_27.clear()
+
+
+
+            self.imageAdded = True
+
 
     def openImage(self):
         # read image from file dialog window
@@ -159,6 +173,31 @@ class Ui_Lab2_Window(object):
                 # afficher l'image filtrée
                 pixmap = QPixmap('blurred_image.png')
                 self.label_21.setPixmap(pixmap)
+
+    def applyCanny(self):
+        if(self.imageAdded):
+            blurred = cv2.GaussianBlur(self.src, (7, 7), 0)
+            nameFile = 'blurred.jpg' if self.isJpg else 'blurred.png'
+            cv2.imwrite(nameFile, blurred)
+            blurredPixmap = QPixmap(nameFile)
+            self.label_25.setPixmap(blurredPixmap)
+
+            grayAndBlurred = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+
+            sobelX = cv2.Sobel(grayAndBlurred, cv2.CV_64F, 1, 0, ksize=3)
+            nameFile = 'sobelX.jpg' if self.isJpg else 'sobelX.png'
+            cv2.imwrite(nameFile, sobelX)
+            sobelXPixmap = QPixmap(nameFile)
+            self.label_32.setPixmap(sobelXPixmap)
+
+            sobelY = cv2.Sobel(grayAndBlurred, cv2.CV_64F, 0, 1, ksize=3)
+            nameFile = 'sobelY.jpg' if self.isJpg else 'sobelY.png'
+            cv2.imwrite(nameFile, sobelY)
+            sobelYPixmap = QPixmap(nameFile)
+            self.label_26.setPixmap(sobelYPixmap)
+
+
+
 
     def setupUi(self, Lab2_Window):
         Lab2_Window.setObjectName("Lab2_Window")
@@ -344,6 +383,8 @@ class Ui_Lab2_Window(object):
         self.gridLayout_3.addWidget(self.frame_5, 1, 0, 1, 1)
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QtWidgets.QWidget()
+        self.scrollbar_tab_2 = QtWidgets.QScrollArea(widgetResizable=True)
+        self.scrollbar_tab_2.setWidget(self.tab_2)
         self.tab_2.setObjectName("tab_2")
         self.verticalLayout_9 = QtWidgets.QVBoxLayout(self.tab_2)
         self.verticalLayout_9.setObjectName("verticalLayout_9")
@@ -511,7 +552,7 @@ class Ui_Lab2_Window(object):
         self.gridLayout_11.addWidget(self.label_27, 0, 2, 1, 1)
         self.verticalLayout_7.addWidget(self.frame_16)
         self.verticalLayout_9.addWidget(self.frame_13)
-        self.tabWidget.addTab(self.tab_2, "")
+        self.tabWidget.addTab(self.scrollbar_tab_2, "")
         self.tab_3 = QtWidgets.QWidget()
         self.tab_3.setObjectName("tab_3")
         self.verticalLayout_6 = QtWidgets.QVBoxLayout(self.tab_3)
@@ -723,9 +764,12 @@ class Ui_Lab2_Window(object):
         self.lineEdit_7.setValidator(QDoubleValidator(999999, -999999, 8))
         self.lineEdit_8.setValidator(QDoubleValidator(999999, -999999, 8))
         self.lineEdit_9.setValidator(QDoubleValidator(999999, -999999, 8))
+
+        # Connection des méthodes
         self.pushButton_2.clicked.connect(self.applyFilter)
         self.comboBox_5.currentIndexChanged.connect(self.filterChanged)
         self.actionAdd_Image.triggered.connect(self.openImage)
+        self.pushButton_3.clicked.connect(self.applyCanny)
 
         self.retranslateUi(Lab2_Window)
         self.tabWidget.setCurrentIndex(0)
@@ -768,7 +812,7 @@ class Ui_Lab2_Window(object):
         self.label_16.setText(_translate("Lab2_Window", "Smoothed Image"))
         self.label_23.setText(_translate("Lab2_Window", "Gradient Y"))
         self.label_24.setText(_translate("Lab2_Window", "Final Contour Image"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Lab2_Window", "Canny Algorithm"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.scrollbar_tab_2), _translate("Lab2_Window", "Canny Algorithm"))
         self.label_20.setText(_translate("Lab2_Window", "N parameter for Low-Pass"))
         self.label_22.setText(_translate("Lab2_Window", "N parameter for Butterworth  "))
         self.pushButton.setText(_translate("Lab2_Window", "Apply Ideal Low-Pass Filter"))

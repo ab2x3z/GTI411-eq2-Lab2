@@ -90,9 +90,40 @@ class Ui_Lab2_Window(object):
             filteredImage = any
             if (str(self.comboBox_5.currentText()) == 'Gaussian'):
                 filteredImage = cv2.GaussianBlur(self.src, (5, 5),0)
+            elif (str(self.comboBox_5.currentText()) == '4 - Neighbour Laplacian '):
+                grayscale = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+                kernel = np.array([[0, 1, 0],
+                                  [1, -4, 1],
+                                  [0, 1, 0]])
+                filteredImage = cv2.filter2D(grayscale, -1, kernel)
+            elif (str(self.comboBox_5.currentText()) == '8 - Neighbour Laplacian '):
+                grayscale = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+                kernel = np.array([[0, 1, 0],
+                                  [1, -8, 1],
+                                  [0, 1, 0]])
+                filteredImage = cv2.filter2D(grayscale, -1, kernel)
+            elif (str(self.comboBox_5.currentText()) == 'Sobel Horiz'):
+                grayscale = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+                sobelH = cv2.Sobel(grayscale, cv2.CV_64F, 1, 0, 3)
+                seuil = 128
+                filteredImage = np.zeros_like(sobelH)
+                filteredImage[sobelH > seuil] = 255
+            elif (str(self.comboBox_5.currentText()) == 'Sobel Vert'):
+                grayscale = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+                sobelV = cv2.Sobel(grayscale, cv2.CV_64F, 0, 1, 3)
+                seuil = 128
+                filteredImage = np.zeros_like(sobelV)
+                filteredImage[sobelV > seuil] = 255
+            elif (str(self.comboBox_5.currentText()) == 'Sobel'):
+                grayscale = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+                sobelH = cv2.Sobel(grayscale, cv2.CV_64F, 1, 0, 3)
+                sobelV = cv2.Sobel(grayscale, cv2.CV_64F, 0, 1, 3)
+                sobel = cv2.addWeighted(sobelH, 0.5, sobelV, 0.5, 0)
+                seuil = 128
+                filteredImage = np.zeros_like(sobel)
+                filteredImage[sobel > seuil] = 255
 
             if (str(self.comboBox_7.currentText()) == 'Circular'):
-                # border
                 #jpg image has 3 channels
                 if (self.isJpg == True):
                     filteredImage[0] = filteredImage[filteredImage.shape[0] - 1]  # ligne y = 0

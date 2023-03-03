@@ -176,7 +176,7 @@ class Ui_Lab2_Window(object):
 
     def applyCanny(self):
         if(self.imageAdded):
-            blurred = cv2.GaussianBlur(self.src, (5, 5), 0)
+            blurred = cv2.GaussianBlur(self.src, (int(self.lineEdit_12.text()), int(self.lineEdit_12.text())), 0)
             nameFile = 'blurred.jpg' if self.isJpg else 'blurred.png'
             cv2.imwrite(nameFile, blurred)
             blurredPixmap = QPixmap(nameFile)
@@ -196,7 +196,12 @@ class Ui_Lab2_Window(object):
             sobelYPixmap = QPixmap(nameFile)
             self.label_26.setPixmap(sobelYPixmap)
 
-            #https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
+
+            # Find the gradient magnitude and direction
+            mag = np.sqrt(sobelX ** 2 + sobelY ** 2)
+            theta = np.arctan2(sobelY, sobelX)
+
+            # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
             def non_max_suppression(img, D):
                 # Get the image shape and create an output array
                 M, N = img.shape
@@ -234,11 +239,8 @@ class Ui_Lab2_Window(object):
 
                 return out
 
-            # Find the gradient magnitude and direction
-            mag = np.sqrt(sobelX ** 2 + sobelY ** 2)
-            theta = np.arctan2(sobelY, sobelX)
-
             nms = non_max_suppression(mag, theta)
+
             nameFile = 'nms.jpg' if self.isJpg else 'nms.png'
             cv2.imwrite(nameFile, nms)
             nmsPixmap = QPixmap(nameFile)
@@ -246,6 +248,49 @@ class Ui_Lab2_Window(object):
 
 
 
+            #https://theailearner.com/2019/05/22/canny-edge-detector/
+            # Set high and low threshold
+            # str1 = self.lineEdit_14.text()
+            # str2 = self.lineEdit_13.text()
+            #
+            # int1 = int(str1)
+            # int2 = int(str2)
+            highThreshold = int(self.lineEdit_14.text())
+            lowThreshold = int(self.lineEdit_13.text())
+
+            M, N = nms.shape
+            out = np.zeros((M, N), dtype=np.uint8)
+
+            # If edge intensity is greater than 'High' it is a sure-edge
+            # below 'low' threshold, it is a sure non-edge
+            strong_i, strong_j = np.where(nms >= highThreshold)
+            zeros_i, zeros_j = np.where(nms < lowThreshold)
+
+            # weak edges
+            weak_i, weak_j = np.where((nms <= highThreshold) & (nms >= lowThreshold))
+
+            # Set same intensity value for all edge pixels
+            out[strong_i, strong_j] = 255
+            out[zeros_i, zeros_j] = 0
+            out[weak_i, weak_j] = 75
+
+            # For weak edges,
+            # if it is connected to a sure edge it will be considered as an edge otherwise suppressed.
+
+            M, N = out.shape
+            for i in range(1, M - 1):
+                for j in range(1, N - 1):
+                    if (out[i, j] == 75):
+                        if 255 in [out[i + 1, j - 1], out[i + 1, j], out[i + 1, j + 1], out[i, j - 1], out[i, j + 1],
+                                   out[i - 1, j - 1], out[i - 1, j], out[i - 1, j + 1]]:
+                            out[i, j] = 255
+                        else:
+                            out[i, j] = 0
+
+            nameFile = 'canny.jpg' if self.isJpg else 'canny.png'
+            cv2.imwrite(nameFile, out)
+            cannyPixmap = QPixmap(nameFile)
+            self.label_27.setPixmap(cannyPixmap)
 
 
     def setupUi(self, Lab2_Window):

@@ -18,6 +18,7 @@ class Ui_Lab2_Window(object):
     imageAdded = False
     src = np.zeros((200, 200, 4), np.uint8)
     isJpg = False
+    isHighPass = False;
 
     def display_Image(self, fileName):
         self.src = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
@@ -250,11 +251,6 @@ class Ui_Lab2_Window(object):
 
             #https://theailearner.com/2019/05/22/canny-edge-detector/
             # Set high and low threshold
-            # str1 = self.lineEdit_14.text()
-            # str2 = self.lineEdit_13.text()
-            #
-            # int1 = int(str1)
-            # int2 = int(str2)
             highThreshold = int(self.lineEdit_14.text())
             lowThreshold = int(self.lineEdit_13.text())
 
@@ -291,6 +287,24 @@ class Ui_Lab2_Window(object):
             cv2.imwrite(nameFile, out)
             cannyPixmap = QPixmap(nameFile)
             self.label_27.setPixmap(cannyPixmap)
+
+    def toggleLowHighPass(self):
+        self.isHighPass = not self.isHighPass
+
+        if self.isHighPass:
+            self.label_20.setText("N parameter for High-Pass")
+            self.label_5.setText("Ideal High-Pass reconstructed Image 1")
+            self.label_11.setText("Ideal High-Pass Spectrum 1")
+            self.label_6.setText("High-Pass Butterworth reconstructed Image 1")
+            self.label_12.setText("High-Pass Butterworth Spectrum 1")
+            self.pushButton.setText("Apply Ideal High-Pass Filter")
+        else:
+            self.label_20.setText("N parameter for Low-Pass")
+            self.label_5.setText("Ideal Low-Pass reconstructed Image 1")
+            self.label_11.setText("Ideal Low-Pass Spectrum 1")
+            self.label_6.setText("Low-Pass Butterworth reconstructed Image 1")
+            self.label_12.setText("Low-Pass Butterworth Spectrum 1")
+            self.pushButton.setText("Apply Ideal Low-Pass Filter")
 
 
     def setupUi(self, Lab2_Window):
@@ -714,6 +728,11 @@ class Ui_Lab2_Window(object):
         self.pushButton_4 = QtWidgets.QPushButton(self.frame_14)
         self.pushButton_4.setObjectName("pushButton_4")
         self.verticalLayout_4.addWidget(self.pushButton_4)
+
+        self.pushButton_5 = QtWidgets.QPushButton(self.frame_14)
+        self.pushButton_5.setObjectName("pushButton_5")
+        self.verticalLayout_4.addWidget(self.pushButton_5)
+
         self.gridLayout_9.addLayout(self.verticalLayout_4, 0, 4, 1, 1)
         self.verticalLayout_6.addWidget(self.frame_14)
         self.frame_7 = QtWidgets.QFrame(self.tab_3)
@@ -864,6 +883,7 @@ class Ui_Lab2_Window(object):
         self.comboBox_5.currentIndexChanged.connect(self.filterChanged)
         self.actionAdd_Image.triggered.connect(self.openImage)
         self.pushButton_3.clicked.connect(self.applyCanny)
+        self.pushButton_5.clicked.connect(self.toggleLowHighPass)
 
         self.retranslateUi(Lab2_Window)
         self.tabWidget.setCurrentIndex(0)
@@ -909,8 +929,11 @@ class Ui_Lab2_Window(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.scrollbar_tab_2), _translate("Lab2_Window", "Canny Algorithm"))
         self.label_20.setText(_translate("Lab2_Window", "N parameter for Low-Pass"))
         self.label_22.setText(_translate("Lab2_Window", "N parameter for Butterworth  "))
+
         self.pushButton.setText(_translate("Lab2_Window", "Apply Ideal Low-Pass Filter"))
         self.pushButton_4.setText(_translate("Lab2_Window", "Apply Butterworth Filter"))
+        self.pushButton_5.setText(_translate("Lab2_Window", "Toggle Low/High Pass"))
+
         self.label_4.setText(_translate("Lab2_Window", "Original Image"))
         self.label_5.setText(_translate("Lab2_Window", " Ideal Low-Pass reconstructed Image 1"))
         self.label_6.setText(_translate("Lab2_Window", "Low-Pass Butterworth reconstructed Image 1"))

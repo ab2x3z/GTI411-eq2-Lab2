@@ -13,6 +13,7 @@ from PyQt5.QtGui import QPixmap, QDoubleValidator
 from PyQt5.QtWidgets import QFileDialog
 from PIL import Image
 import cv2
+import matplotlib.pyplot as plt
 
 class Ui_Lab2_Window(object):
     imageAdded = False
@@ -27,7 +28,6 @@ class Ui_Lab2_Window(object):
 
         if(self.tabWidget.currentIndex()) == 0:
             self.label_3.setPixmap(pixmap)
-            self.imageAdded = True
         elif(self.tabWidget.currentIndex()) == 1:
             self.label_31.setPixmap(pixmap)
             self.label_32.clear()
@@ -35,10 +35,15 @@ class Ui_Lab2_Window(object):
             self.label_25.clear()
             self.label_26.clear()
             self.label_27.clear()
+        elif (self.tabWidget.currentIndex()) == 2:
+            self.label_7.setPixmap(pixmap)
+            self.label_8.clear()
+            self.label_9.clear()
+            self.label_13.clear()
+            self.label_14.clear()
+            self.label_15.clear()
 
-
-
-            self.imageAdded = True
+        self.imageAdded = True
 
 
     def openImage(self):
@@ -305,6 +310,84 @@ class Ui_Lab2_Window(object):
             self.label_6.setText("Low-Pass Butterworth reconstructed Image 1")
             self.label_12.setText("Low-Pass Butterworth Spectrum 1")
             self.pushButton.setText("Apply Ideal Low-Pass Filter")
+
+    def applyIdealAndButterworthFilters(self):
+        if self.imageAdded:
+            gray_src = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+
+            F = np.fft.fft2(gray_src)
+            Fshift = np.fft.fftshift(F)
+
+            realF = np.log1p(np.abs(F))
+            realFShift = np.log1p(np.abs(Fshift))
+
+            nameFile = 'test.jpg' if self.isJpg else 'test.png'
+            cv2.imwrite(nameFile, 20 * realFShift)
+            pixmap = QPixmap(nameFile)
+            self.label_13.setPixmap(pixmap)
+
+            #Filtre Passe-bas Butterworth
+            M, N = gray_src.shape
+            butterworthLP = np.zeros((M, N), dtype=np.float32)
+            n = int(self.lineEdit_11.text())
+            D0 = n * 7
+            for u in range(M):
+                for v in range(N):
+                    D = np.sqrt((u-M/2) ** 2 + (v-N/2) ** 2)
+                    butterworthLP[u, v] = 1 / (1 + (D/D0) ** (2*n))
+
+            nameFile = 'butterworthlowpass.jpg' if self.isJpg else 'butterworthlowpass.png'
+            cv2.imwrite(nameFile, 500 * butterworthLP)
+            pixmap = QPixmap(nameFile)
+            self.label_15.setPixmap(pixmap)
+
+            Gshift = Fshift * butterworthLP
+            G = np.fft.ifftshift(Gshift)
+            g = np.abs(np.fft.ifft2(G))
+
+            nameFile = 'butterworthlowpassfiltered.jpg' if self.isJpg else 'butterworthlowpassfiltered.png'
+            cv2.imwrite(nameFile,  g)
+            pixmap = QPixmap(nameFile)
+            self.label_9.setPixmap(pixmap)
+
+            # Filtre Passe-bas ideal
+            M, N = gray_src.shape
+            idealLP = np.zeros((M, N), dtype=np.float32)
+            n = int(self.lineEdit_10.text())
+            D0 = n * 7
+            for u in range(M):
+                for v in range(N):
+                    D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                    if D <= D0:
+                        idealLP[u, v] = 1
+                    else:
+                        idealLP[u, v] = 0
+
+            nameFile = 'ideallowpass.jpg' if self.isJpg else 'ideallowpass.png'
+            cv2.imwrite(nameFile, 500 * idealLP)
+            pixmap = QPixmap(nameFile)
+            self.label_14.setPixmap(pixmap)
+
+            Gshift = Fshift * idealLP
+            G = np.fft.ifftshift(Gshift)
+            g = np.abs(np.fft.ifft2(G))
+
+            nameFile = 'ideallowpassfiltered.jpg' if self.isJpg else 'ideallowpassfiltered.png'
+            cv2.imwrite(nameFile, g)
+            pixmap = QPixmap(nameFile)
+            self.label_8.setPixmap(pixmap)
+
+
+
+
+            # plt.imshow(realF, cmap='gray')
+            # plt.axis('off')
+            # plt.show()
+
+            # plt.imshow(realFShift, cmap='gray')
+            # plt.axis('off')
+            # plt.show()
+
 
 
     def setupUi(self, Lab2_Window):
@@ -662,6 +745,8 @@ class Ui_Lab2_Window(object):
         self.verticalLayout_9.addWidget(self.frame_13)
         self.tabWidget.addTab(self.scrollbar_tab_2, "")
         self.tab_3 = QtWidgets.QWidget()
+        self.scrollbar_tab_3 = QtWidgets.QScrollArea(widgetResizable=True)
+        self.scrollbar_tab_3.setWidget(self.tab_3)
         self.tab_3.setObjectName("tab_3")
         self.verticalLayout_6 = QtWidgets.QVBoxLayout(self.tab_3)
         self.verticalLayout_6.setObjectName("verticalLayout_6")
@@ -841,7 +926,7 @@ class Ui_Lab2_Window(object):
         self.gridLayout_7.addWidget(self.label_15, 0, 2, 1, 1)
         self.verticalLayout_3.addWidget(self.frame_11)
         self.verticalLayout_6.addWidget(self.frame_8)
-        self.tabWidget.addTab(self.tab_3, "")
+        self.tabWidget.addTab(self.scrollbar_tab_3, "")
         self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
         Lab2_Window.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(Lab2_Window)
@@ -884,6 +969,7 @@ class Ui_Lab2_Window(object):
         self.actionAdd_Image.triggered.connect(self.openImage)
         self.pushButton_3.clicked.connect(self.applyCanny)
         self.pushButton_5.clicked.connect(self.toggleLowHighPass)
+        self.pushButton.clicked.connect(self.applyIdealAndButterworthFilters)
 
         self.retranslateUi(Lab2_Window)
         self.tabWidget.setCurrentIndex(0)
@@ -940,7 +1026,7 @@ class Ui_Lab2_Window(object):
         self.label_10.setText(_translate("Lab2_Window", "Original Spectrum"))
         self.label_11.setText(_translate("Lab2_Window", "Ideal Low-Pass Spectrum 1"))
         self.label_12.setText(_translate("Lab2_Window", "Low-Pass Butterworth Spectrum 1"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("Lab2_Window", "Frequency Filters"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.scrollbar_tab_3), _translate("Lab2_Window", "Frequency Filters"))
         self.menuFile.setTitle(_translate("Lab2_Window", "File"))
         self.menuFilter.setTitle(_translate("Lab2_Window", "Add"))
         self.actionExit.setText(_translate("Lab2_Window", "Exit"))

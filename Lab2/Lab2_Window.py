@@ -7,24 +7,44 @@
 # WARNING! All changes made in this file will be lost!
 
 
-import cv2
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtGui import QPixmap, QDoubleValidator
 from PyQt5.QtWidgets import QFileDialog
 from PIL import Image
+import cv2
+import matplotlib.pyplot as plt
 
 class Ui_Lab2_Window(object):
     imageAdded = False
     src = np.zeros((200, 200, 4), np.uint8)
     isJpg = False
+    isHighPass = False;
 
     def display_Image(self, fileName):
         self.src = cv2.imread(fileName, cv2.IMREAD_UNCHANGED)
         # afficher l'image originale
         pixmap = QPixmap(fileName)
-        self.label_3.setPixmap(pixmap)
+
+        if(self.tabWidget.currentIndex()) == 0:
+            self.label_3.setPixmap(pixmap)
+        elif(self.tabWidget.currentIndex()) == 1:
+            self.label_31.setPixmap(pixmap)
+            self.label_32.clear()
+            self.label_33.clear()
+            self.label_25.clear()
+            self.label_26.clear()
+            self.label_27.clear()
+        elif (self.tabWidget.currentIndex()) == 2:
+            self.label_7.setPixmap(pixmap)
+            self.label_8.clear()
+            self.label_9.clear()
+            self.label_13.clear()
+            self.label_14.clear()
+            self.label_15.clear()
+
         self.imageAdded = True
+
 
     def openImage(self):
         # read image from file dialog window
@@ -190,6 +210,274 @@ class Ui_Lab2_Window(object):
                 # afficher l'image filtrée
                 pixmap = QPixmap('blurred_image.png')
                 self.label_21.setPixmap(pixmap)
+
+    def applyCanny(self):
+        if(self.imageAdded):
+            blurred = cv2.GaussianBlur(self.src, (int(self.lineEdit_12.text()), int(self.lineEdit_12.text())), 0)
+            nameFile = 'blurred.jpg' if self.isJpg else 'blurred.png'
+            cv2.imwrite(nameFile, blurred)
+            blurredPixmap = QPixmap(nameFile)
+            self.label_25.setPixmap(blurredPixmap)
+
+            grayAndBlurred = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+
+            sobelX = cv2.Sobel(grayAndBlurred, cv2.CV_64F, 1, 0, ksize=3)
+            nameFile = 'sobelX.jpg' if self.isJpg else 'sobelX.png'
+            cv2.imwrite(nameFile, sobelX)
+            sobelXPixmap = QPixmap(nameFile)
+            self.label_32.setPixmap(sobelXPixmap)
+
+            sobelY = cv2.Sobel(grayAndBlurred, cv2.CV_64F, 0, 1, ksize=3)
+            nameFile = 'sobelY.jpg' if self.isJpg else 'sobelY.png'
+            cv2.imwrite(nameFile, sobelY)
+            sobelYPixmap = QPixmap(nameFile)
+            self.label_26.setPixmap(sobelYPixmap)
+
+
+            # Find the gradient magnitude and direction
+            mag = np.sqrt(sobelX ** 2 + sobelY ** 2)
+            theta = np.arctan2(sobelY, sobelX)
+
+            # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
+            def non_max_suppression(img, D):
+                # Get the image shape and create an output array
+                M, N = img.shape
+                out = np.zeros((M, N), dtype=np.int32)
+
+                # Convert angle in degrees to radians
+                angle = D * 180. / np.pi
+                angle[angle < 0] += 180
+
+                # Perform non-maximum suppression
+                for i in range(1, M - 1):
+                    for j in range(1, N - 1):
+                        q = 255
+                        r = 255
+
+                        # Find the edge direction
+                        if (0 <= angle[i, j] < 22.5) or (157.5 <= angle[i, j] <= 180):
+                            q = img[i, j + 1]
+                            r = img[i, j - 1]
+                        elif 22.5 <= angle[i, j] < 67.5:
+                            q = img[i + 1, j - 1]
+                            r = img[i - 1, j + 1]
+                        elif 67.5 <= angle[i, j] < 112.5:
+                            q = img[i + 1, j]
+                            r = img[i - 1, j]
+                        elif 112.5 <= angle[i, j] < 157.5:
+                            q = img[i - 1, j - 1]
+                            r = img[i + 1, j + 1]
+
+                        # Compare the intensity of the current pixel with its neighbors
+                        if (img[i, j] >= q) and (img[i, j] >= r):
+                            out[i, j] = img[i, j]
+                        else:
+                            out[i, j] = 0
+
+                return out
+
+            nms = non_max_suppression(mag, theta)
+
+            nameFile = 'nms.jpg' if self.isJpg else 'nms.png'
+            cv2.imwrite(nameFile, nms)
+            nmsPixmap = QPixmap(nameFile)
+            self.label_33.setPixmap(nmsPixmap)
+
+
+
+            #https://theailearner.com/2019/05/22/canny-edge-detector/
+            # Set high and low threshold
+            highThreshold = int(self.lineEdit_14.text())
+            lowThreshold = int(self.lineEdit_13.text())
+
+            M, N = nms.shape
+            out = np.zeros((M, N), dtype=np.uint8)
+
+            # If edge intensity is greater than 'High' it is a sure-edge
+            # below 'low' threshold, it is a sure non-edge
+            strong_i, strong_j = np.where(nms >= highThreshold)
+            zeros_i, zeros_j = np.where(nms < lowThreshold)
+
+            # weak edges
+            weak_i, weak_j = np.where((nms <= highThreshold) & (nms >= lowThreshold))
+
+            # Set same intensity value for all edge pixels
+            out[strong_i, strong_j] = 255
+            out[zeros_i, zeros_j] = 0
+            out[weak_i, weak_j] = 75
+
+            # For weak edges,
+            # if it is connected to a sure edge it will be considered as an edge otherwise suppressed.
+
+            M, N = out.shape
+            for i in range(1, M - 1):
+                for j in range(1, N - 1):
+                    if (out[i, j] == 75):
+                        if 255 in [out[i + 1, j - 1], out[i + 1, j], out[i + 1, j + 1], out[i, j - 1], out[i, j + 1],
+                                   out[i - 1, j - 1], out[i - 1, j], out[i - 1, j + 1]]:
+                            out[i, j] = 255
+                        else:
+                            out[i, j] = 0
+
+            nameFile = 'canny.jpg' if self.isJpg else 'canny.png'
+            cv2.imwrite(nameFile, out)
+            cannyPixmap = QPixmap(nameFile)
+            self.label_27.setPixmap(cannyPixmap)
+
+    def toggleLowHighPass(self):
+        self.isHighPass = not self.isHighPass
+
+        if self.isHighPass:
+            self.label_20.setText("N parameter for High-Pass")
+            self.label_5.setText("Ideal High-Pass reconstructed Image 1")
+            self.label_11.setText("Ideal High-Pass Spectrum 1")
+            self.label_6.setText("High-Pass Butterworth reconstructed Image 1")
+            self.label_12.setText("High-Pass Butterworth Spectrum 1")
+            self.pushButton.setText("Apply Ideal High-Pass Filter")
+        else:
+            self.label_20.setText("N parameter for Low-Pass")
+            self.label_5.setText("Ideal Low-Pass reconstructed Image 1")
+            self.label_11.setText("Ideal Low-Pass Spectrum 1")
+            self.label_6.setText("Low-Pass Butterworth reconstructed Image 1")
+            self.label_12.setText("Low-Pass Butterworth Spectrum 1")
+            self.pushButton.setText("Apply Ideal Low-Pass Filter")
+
+    #https://www.youtube.com/watch?v=C48AI4FvOKE&t=330s
+    def applyIdealFilter(self):
+        if self.imageAdded:
+            gray_src = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+
+            F = np.fft.fft2(gray_src)
+            Fshift = np.fft.fftshift(F)
+
+            realF = np.log1p(np.abs(F))
+            realFShift = np.log1p(np.abs(Fshift))
+
+            nameFile = 'imagespectrum.jpg' if self.isJpg else 'imagespectrum.png'
+            cv2.imwrite(nameFile, 20 * realFShift)
+            pixmap = QPixmap(nameFile)
+            self.label_13.setPixmap(pixmap)
+
+            if self.isHighPass:
+                # Filtre Passe-haut ideal
+                M, N = gray_src.shape
+                idealHP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_10.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        if D <= D0:
+                            idealHP[u, v] = 0
+                        else:
+                            idealHP[u, v] = 1
+
+                nameFile = 'idealhighpass.jpg' if self.isJpg else 'idealhighpass.png'
+                cv2.imwrite(nameFile, 500 * idealHP)
+                pixmap = QPixmap(nameFile)
+                self.label_14.setPixmap(pixmap)
+
+                Gshift = Fshift * idealHP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
+
+                nameFile = 'idealhighpassfiltered.jpg' if self.isJpg else 'idealhighpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_8.setPixmap(pixmap)
+            else:
+                # Filtre Passe-bas ideal
+                M, N = gray_src.shape
+                idealLP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_10.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        if D <= D0:
+                            idealLP[u, v] = 1
+                        else:
+                            idealLP[u, v] = 0
+
+                nameFile = 'ideallowpass.jpg' if self.isJpg else 'ideallowpass.png'
+                cv2.imwrite(nameFile, 500 * idealLP)
+                pixmap = QPixmap(nameFile)
+                self.label_14.setPixmap(pixmap)
+
+                Gshift = Fshift * idealLP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
+
+                nameFile = 'ideallowpassfiltered.jpg' if self.isJpg else 'ideallowpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_8.setPixmap(pixmap)
+
+    #https://www.youtube.com/watch?v=C48AI4FvOKE&t=330s
+    def applyButterworthFilter(self):
+        if self.imageAdded:
+            gray_src = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+
+            F = np.fft.fft2(gray_src)
+            Fshift = np.fft.fftshift(F)
+
+            realF = np.log1p(np.abs(F))
+            realFShift = np.log1p(np.abs(Fshift))
+
+            nameFile = 'imagespectrum.jpg' if self.isJpg else 'imagespectrum.png'
+            cv2.imwrite(nameFile, 20 * realFShift)
+            pixmap = QPixmap(nameFile)
+            self.label_13.setPixmap(pixmap)
+
+            if self.isHighPass:
+                # Filtre Passe-haut Butterworth
+                M, N = gray_src.shape
+                butterworthHP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_11.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        butterworthHP[u, v] = 1 / (1 + (D0 / D) ** (2 * n))
+
+                nameFile = 'butterworthhighpass.jpg' if self.isJpg else 'butterworthhighpass.png'
+                cv2.imwrite(nameFile, 500 * butterworthHP)
+                pixmap = QPixmap(nameFile)
+                self.label_15.setPixmap(pixmap)
+
+                Gshift = Fshift * butterworthHP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
+
+                nameFile = 'butterworthhighpassfiltered.jpg' if self.isJpg else 'butterworthhighpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_9.setPixmap(pixmap)
+            else:
+                # Filtre Passe-bas Butterworth
+                M, N = gray_src.shape
+                butterworthLP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_11.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        butterworthLP[u, v] = 1 / (1 + (D / D0) ** (2 * n))
+
+                nameFile = 'butterworthlowpass.jpg' if self.isJpg else 'butterworthlowpass.png'
+                cv2.imwrite(nameFile, 500 * butterworthLP)
+                pixmap = QPixmap(nameFile)
+                self.label_15.setPixmap(pixmap)
+
+                Gshift = Fshift * butterworthLP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
+
+                nameFile = 'butterworthlowpassfiltered.jpg' if self.isJpg else 'butterworthlowpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_9.setPixmap(pixmap)
+
 
     def setupUi(self, Lab2_Window):
         Lab2_Window.setObjectName("Lab2_Window")
@@ -375,6 +663,8 @@ class Ui_Lab2_Window(object):
         self.gridLayout_3.addWidget(self.frame_5, 1, 0, 1, 1)
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QtWidgets.QWidget()
+        self.scrollbar_tab_2 = QtWidgets.QScrollArea(widgetResizable=True)
+        self.scrollbar_tab_2.setWidget(self.tab_2)
         self.tab_2.setObjectName("tab_2")
         self.verticalLayout_9 = QtWidgets.QVBoxLayout(self.tab_2)
         self.verticalLayout_9.setObjectName("verticalLayout_9")
@@ -542,8 +832,10 @@ class Ui_Lab2_Window(object):
         self.gridLayout_11.addWidget(self.label_27, 0, 2, 1, 1)
         self.verticalLayout_7.addWidget(self.frame_16)
         self.verticalLayout_9.addWidget(self.frame_13)
-        self.tabWidget.addTab(self.tab_2, "")
+        self.tabWidget.addTab(self.scrollbar_tab_2, "")
         self.tab_3 = QtWidgets.QWidget()
+        self.scrollbar_tab_3 = QtWidgets.QScrollArea(widgetResizable=True)
+        self.scrollbar_tab_3.setWidget(self.tab_3)
         self.tab_3.setObjectName("tab_3")
         self.verticalLayout_6 = QtWidgets.QVBoxLayout(self.tab_3)
         self.verticalLayout_6.setObjectName("verticalLayout_6")
@@ -610,6 +902,11 @@ class Ui_Lab2_Window(object):
         self.pushButton_4 = QtWidgets.QPushButton(self.frame_14)
         self.pushButton_4.setObjectName("pushButton_4")
         self.verticalLayout_4.addWidget(self.pushButton_4)
+
+        self.pushButton_5 = QtWidgets.QPushButton(self.frame_14)
+        self.pushButton_5.setObjectName("pushButton_5")
+        self.verticalLayout_4.addWidget(self.pushButton_5)
+
         self.gridLayout_9.addLayout(self.verticalLayout_4, 0, 4, 1, 1)
         self.verticalLayout_6.addWidget(self.frame_14)
         self.frame_7 = QtWidgets.QFrame(self.tab_3)
@@ -718,7 +1015,7 @@ class Ui_Lab2_Window(object):
         self.gridLayout_7.addWidget(self.label_15, 0, 2, 1, 1)
         self.verticalLayout_3.addWidget(self.frame_11)
         self.verticalLayout_6.addWidget(self.frame_8)
-        self.tabWidget.addTab(self.tab_3, "")
+        self.tabWidget.addTab(self.scrollbar_tab_3, "")
         self.gridLayout.addWidget(self.tabWidget, 0, 0, 1, 1)
         Lab2_Window.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(Lab2_Window)
@@ -754,9 +1051,15 @@ class Ui_Lab2_Window(object):
         self.lineEdit_7.setValidator(QDoubleValidator(999999, -999999, 8))
         self.lineEdit_8.setValidator(QDoubleValidator(999999, -999999, 8))
         self.lineEdit_9.setValidator(QDoubleValidator(999999, -999999, 8))
+
+        # Connection des méthodes
         self.pushButton_2.clicked.connect(self.applyFilter)
         self.comboBox_5.currentIndexChanged.connect(self.filterChanged)
         self.actionAdd_Image.triggered.connect(self.openImage)
+        self.pushButton_3.clicked.connect(self.applyCanny)
+        self.pushButton_5.clicked.connect(self.toggleLowHighPass)
+        self.pushButton.clicked.connect(self.applyIdealFilter)
+        self.pushButton_4.clicked.connect(self.applyButterworthFilter)
 
         self.retranslateUi(Lab2_Window)
         self.tabWidget.setCurrentIndex(0)
@@ -799,18 +1102,21 @@ class Ui_Lab2_Window(object):
         self.label_16.setText(_translate("Lab2_Window", "Smoothed Image"))
         self.label_23.setText(_translate("Lab2_Window", "Gradient Y"))
         self.label_24.setText(_translate("Lab2_Window", "Final Contour Image"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("Lab2_Window", "Canny Algorithm"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.scrollbar_tab_2), _translate("Lab2_Window", "Canny Algorithm"))
         self.label_20.setText(_translate("Lab2_Window", "N parameter for Low-Pass"))
         self.label_22.setText(_translate("Lab2_Window", "N parameter for Butterworth  "))
+
         self.pushButton.setText(_translate("Lab2_Window", "Apply Ideal Low-Pass Filter"))
         self.pushButton_4.setText(_translate("Lab2_Window", "Apply Butterworth Filter"))
+        self.pushButton_5.setText(_translate("Lab2_Window", "Toggle Low/High Pass"))
+
         self.label_4.setText(_translate("Lab2_Window", "Original Image"))
         self.label_5.setText(_translate("Lab2_Window", " Ideal Low-Pass reconstructed Image 1"))
         self.label_6.setText(_translate("Lab2_Window", "Low-Pass Butterworth reconstructed Image 1"))
         self.label_10.setText(_translate("Lab2_Window", "Original Spectrum"))
         self.label_11.setText(_translate("Lab2_Window", "Ideal Low-Pass Spectrum 1"))
         self.label_12.setText(_translate("Lab2_Window", "Low-Pass Butterworth Spectrum 1"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_3), _translate("Lab2_Window", "Frequency Filters"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.scrollbar_tab_3), _translate("Lab2_Window", "Frequency Filters"))
         self.menuFile.setTitle(_translate("Lab2_Window", "File"))
         self.menuFilter.setTitle(_translate("Lab2_Window", "Add"))
         self.actionExit.setText(_translate("Lab2_Window", "Exit"))

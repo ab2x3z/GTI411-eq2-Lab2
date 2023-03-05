@@ -311,7 +311,8 @@ class Ui_Lab2_Window(object):
             self.label_12.setText("Low-Pass Butterworth Spectrum 1")
             self.pushButton.setText("Apply Ideal Low-Pass Filter")
 
-    def applyIdealAndButterworthFilters(self):
+    #https://www.youtube.com/watch?v=C48AI4FvOKE&t=330s
+    def applyIdealFilter(self):
         if self.imageAdded:
             gray_src = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
 
@@ -321,73 +322,130 @@ class Ui_Lab2_Window(object):
             realF = np.log1p(np.abs(F))
             realFShift = np.log1p(np.abs(Fshift))
 
-            nameFile = 'test.jpg' if self.isJpg else 'test.png'
+            nameFile = 'imagespectrum.jpg' if self.isJpg else 'imagespectrum.png'
             cv2.imwrite(nameFile, 20 * realFShift)
             pixmap = QPixmap(nameFile)
             self.label_13.setPixmap(pixmap)
 
-            #Filtre Passe-bas Butterworth
-            M, N = gray_src.shape
-            butterworthLP = np.zeros((M, N), dtype=np.float32)
-            n = int(self.lineEdit_11.text())
-            D0 = n * 7
-            for u in range(M):
-                for v in range(N):
-                    D = np.sqrt((u-M/2) ** 2 + (v-N/2) ** 2)
-                    butterworthLP[u, v] = 1 / (1 + (D/D0) ** (2*n))
+            if self.isHighPass:
+                # Filtre Passe-haut ideal
+                M, N = gray_src.shape
+                idealHP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_10.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        if D <= D0:
+                            idealHP[u, v] = 0
+                        else:
+                            idealHP[u, v] = 1
 
-            nameFile = 'butterworthlowpass.jpg' if self.isJpg else 'butterworthlowpass.png'
-            cv2.imwrite(nameFile, 500 * butterworthLP)
+                nameFile = 'idealhighpass.jpg' if self.isJpg else 'idealhighpass.png'
+                cv2.imwrite(nameFile, 500 * idealHP)
+                pixmap = QPixmap(nameFile)
+                self.label_14.setPixmap(pixmap)
+
+                Gshift = Fshift * idealHP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
+
+                nameFile = 'idealhighpassfiltered.jpg' if self.isJpg else 'idealhighpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_8.setPixmap(pixmap)
+            else:
+                # Filtre Passe-bas ideal
+                M, N = gray_src.shape
+                idealLP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_10.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        if D <= D0:
+                            idealLP[u, v] = 1
+                        else:
+                            idealLP[u, v] = 0
+
+                nameFile = 'ideallowpass.jpg' if self.isJpg else 'ideallowpass.png'
+                cv2.imwrite(nameFile, 500 * idealLP)
+                pixmap = QPixmap(nameFile)
+                self.label_14.setPixmap(pixmap)
+
+                Gshift = Fshift * idealLP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
+
+                nameFile = 'ideallowpassfiltered.jpg' if self.isJpg else 'ideallowpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_8.setPixmap(pixmap)
+
+    #https://www.youtube.com/watch?v=C48AI4FvOKE&t=330s
+    def applyButterworthFilter(self):
+        if self.imageAdded:
+            gray_src = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
+
+            F = np.fft.fft2(gray_src)
+            Fshift = np.fft.fftshift(F)
+
+            realF = np.log1p(np.abs(F))
+            realFShift = np.log1p(np.abs(Fshift))
+
+            nameFile = 'imagespectrum.jpg' if self.isJpg else 'imagespectrum.png'
+            cv2.imwrite(nameFile, 20 * realFShift)
             pixmap = QPixmap(nameFile)
-            self.label_15.setPixmap(pixmap)
+            self.label_13.setPixmap(pixmap)
 
-            Gshift = Fshift * butterworthLP
-            G = np.fft.ifftshift(Gshift)
-            g = np.abs(np.fft.ifft2(G))
+            if self.isHighPass:
+                # Filtre Passe-haut Butterworth
+                M, N = gray_src.shape
+                butterworthHP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_11.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        butterworthHP[u, v] = 1 / (1 + (D0 / D) ** (2 * n))
 
-            nameFile = 'butterworthlowpassfiltered.jpg' if self.isJpg else 'butterworthlowpassfiltered.png'
-            cv2.imwrite(nameFile,  g)
-            pixmap = QPixmap(nameFile)
-            self.label_9.setPixmap(pixmap)
+                nameFile = 'butterworthhighpass.jpg' if self.isJpg else 'butterworthhighpass.png'
+                cv2.imwrite(nameFile, 500 * butterworthHP)
+                pixmap = QPixmap(nameFile)
+                self.label_15.setPixmap(pixmap)
 
-            # Filtre Passe-bas ideal
-            M, N = gray_src.shape
-            idealLP = np.zeros((M, N), dtype=np.float32)
-            n = int(self.lineEdit_10.text())
-            D0 = n * 7
-            for u in range(M):
-                for v in range(N):
-                    D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
-                    if D <= D0:
-                        idealLP[u, v] = 1
-                    else:
-                        idealLP[u, v] = 0
+                Gshift = Fshift * butterworthHP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
 
-            nameFile = 'ideallowpass.jpg' if self.isJpg else 'ideallowpass.png'
-            cv2.imwrite(nameFile, 500 * idealLP)
-            pixmap = QPixmap(nameFile)
-            self.label_14.setPixmap(pixmap)
+                nameFile = 'butterworthhighpassfiltered.jpg' if self.isJpg else 'butterworthhighpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_9.setPixmap(pixmap)
+            else:
+                # Filtre Passe-bas Butterworth
+                M, N = gray_src.shape
+                butterworthLP = np.zeros((M, N), dtype=np.float32)
+                n = int(self.lineEdit_11.text())
+                D0 = n * 7
+                for u in range(M):
+                    for v in range(N):
+                        D = np.sqrt((u - M / 2) ** 2 + (v - N / 2) ** 2)
+                        butterworthLP[u, v] = 1 / (1 + (D / D0) ** (2 * n))
 
-            Gshift = Fshift * idealLP
-            G = np.fft.ifftshift(Gshift)
-            g = np.abs(np.fft.ifft2(G))
+                nameFile = 'butterworthlowpass.jpg' if self.isJpg else 'butterworthlowpass.png'
+                cv2.imwrite(nameFile, 500 * butterworthLP)
+                pixmap = QPixmap(nameFile)
+                self.label_15.setPixmap(pixmap)
 
-            nameFile = 'ideallowpassfiltered.jpg' if self.isJpg else 'ideallowpassfiltered.png'
-            cv2.imwrite(nameFile, g)
-            pixmap = QPixmap(nameFile)
-            self.label_8.setPixmap(pixmap)
+                Gshift = Fshift * butterworthLP
+                G = np.fft.ifftshift(Gshift)
+                g = np.abs(np.fft.ifft2(G))
 
-
-
-
-            # plt.imshow(realF, cmap='gray')
-            # plt.axis('off')
-            # plt.show()
-
-            # plt.imshow(realFShift, cmap='gray')
-            # plt.axis('off')
-            # plt.show()
-
+                nameFile = 'butterworthlowpassfiltered.jpg' if self.isJpg else 'butterworthlowpassfiltered.png'
+                cv2.imwrite(nameFile, g)
+                pixmap = QPixmap(nameFile)
+                self.label_9.setPixmap(pixmap)
 
 
     def setupUi(self, Lab2_Window):
@@ -969,7 +1027,8 @@ class Ui_Lab2_Window(object):
         self.actionAdd_Image.triggered.connect(self.openImage)
         self.pushButton_3.clicked.connect(self.applyCanny)
         self.pushButton_5.clicked.connect(self.toggleLowHighPass)
-        self.pushButton.clicked.connect(self.applyIdealAndButterworthFilters)
+        self.pushButton.clicked.connect(self.applyIdealFilter)
+        self.pushButton_4.clicked.connect(self.applyButterworthFilter)
 
         self.retranslateUi(Lab2_Window)
         self.tabWidget.setCurrentIndex(0)

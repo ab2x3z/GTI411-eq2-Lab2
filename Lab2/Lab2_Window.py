@@ -13,7 +13,6 @@ from PyQt5.QtGui import QPixmap, QDoubleValidator
 from PyQt5.QtWidgets import QFileDialog
 from PIL import Image
 import cv2
-import matplotlib.pyplot as plt
 
 class Ui_Lab2_Window(object):
     imageAdded = False
@@ -105,7 +104,6 @@ class Ui_Lab2_Window(object):
             self.lineEdit_9.setEnabled(True)
 
     def applyFilter(self):
-        # Debut des modifs pour tester **********************************************************************************************************************
         if (self.imageAdded):
             filteredImage = any
             if (str(self.comboBox_5.currentText()) == 'Gaussian'):
@@ -144,28 +142,18 @@ class Ui_Lab2_Window(object):
                 filteredImage[sobel > seuil] = 255
 
             if (str(self.comboBox_7.currentText()) == 'Circular'):
-                #jpg image has 3 channels
-                if (self.isJpg == True):
-                    filteredImage[0] = filteredImage[filteredImage.shape[0] - 1]  # ligne y = 0
-                    filteredImage[filteredImage.shape[0] - 1] = filteredImage[0]  # ligne y = (height - 1)
-                    filteredImage[:, 0] = filteredImage[:, filteredImage.shape[1] - 1]  # colonne x = 0
-                    filteredImage[:, filteredImage.shape[1] - 1] = filteredImage[:, 0]  # colonne y = (width - 1)
-                # png image has 4 channels
-                if (self.isJpg == False):
-                    filteredImage[0] = [0, 0, 0, 255]  # ligne y = 0
-                    filteredImage[filteredImage.shape[0] - 1] = [0, 0, 0, 255]  # ligne y = (height - 1)
-                    filteredImage[:, 0] = [0, 0, 0, 255]  # colonne x = 0
-                    filteredImage[:, filteredImage.shape[1] - 1] = [0, 0, 0, 255]  # colonne y = (width - 1)
+                filteredImage[0] = filteredImage[filteredImage.shape[0] - 1]
+                filteredImage[filteredImage.shape[0] - 1] = filteredImage[0]
+                filteredImage[:, 0] = filteredImage[:, filteredImage.shape[1] - 1]
+                filteredImage[:, filteredImage.shape[1] - 1] = filteredImage[:, 0]
 
             if (str(self.comboBox_6.currentText()) == 'Normalize 0 to 255'):
-                test = filteredImage
-                filteredImage = cv2.normalize(test, None, 0, 255, cv2.NORM_MINMAX)
+                filteredImage = cv2.normalize(filteredImage, None, 0, 255, cv2.NORM_MINMAX)
 
             # afficher l'image filtrée
             cv2.imwrite('blurred_image.jpg', filteredImage)
             pixmap = QPixmap('blurred_image.jpg')
             self.label_21.setPixmap(pixmap)
-        # Fin des modifs pour tester **********************************************************************************************************************
 
         if (str(self.comboBox_5.currentText()) == 'Mean' and str(self.comboBox_7.currentText()) == '0' and str(
                 self.comboBox_6.currentText()) == 'Clamp 0 ... 255' and self.imageAdded):

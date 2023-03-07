@@ -199,6 +199,11 @@ class Ui_Lab2_Window(object):
                 pixmap = QPixmap('blurred_image.png')
                 self.label_21.setPixmap(pixmap)
 
+    # Des portions de cette fonction ont été prises de ces sites:
+    # Suppression des valeurs non-maximales:
+    # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
+    # Seuil avec hystérésis:
+    # https://theailearner.com/2019/05/22/canny-edge-detector/
     def applyCanny(self):
         if(self.imageAdded):
             blurred = cv2.GaussianBlur(self.src, (int(self.lineEdit_12.text()), int(self.lineEdit_12.text())), 0)
@@ -221,12 +226,12 @@ class Ui_Lab2_Window(object):
             sobelYPixmap = QPixmap(nameFile)
             self.label_26.setPixmap(sobelYPixmap)
 
-
-            # Find the gradient magnitude and direction
+            # Trouver la magnitude du gradient et sa direction
             mag = np.sqrt(sobelX ** 2 + sobelY ** 2)
             theta = np.arctan2(sobelY, sobelX)
 
             # https://towardsdatascience.com/canny-edge-detection-step-by-step-in-python-computer-vision-b49c3a2d8123
+            # Le code pour supprimer les valeurs non-maximales de l'image a été pris et adapté du lien ci-dessus
             def non_max_suppression(img, D):
                 # Get the image shape and create an output array
                 M, N = img.shape
@@ -271,9 +276,9 @@ class Ui_Lab2_Window(object):
             nmsPixmap = QPixmap(nameFile)
             self.label_33.setPixmap(nmsPixmap)
 
-
-
             #https://theailearner.com/2019/05/22/canny-edge-detector/
+            #Le code pour effectuer le seuil avec hystérésis a été pris et adapté du lien ci-dessus
+
             # Set high and low threshold
             highThreshold = int(self.lineEdit_14.text())
             lowThreshold = int(self.lineEdit_13.text())
@@ -300,7 +305,7 @@ class Ui_Lab2_Window(object):
             M, N = out.shape
             for i in range(1, M - 1):
                 for j in range(1, N - 1):
-                    if (out[i, j] == 75):
+                    if out[i, j] == 75:
                         if 255 in [out[i + 1, j - 1], out[i + 1, j], out[i + 1, j + 1], out[i, j - 1], out[i, j + 1],
                                    out[i - 1, j - 1], out[i - 1, j], out[i - 1, j + 1]]:
                             out[i, j] = 255
@@ -330,9 +335,15 @@ class Ui_Lab2_Window(object):
             self.label_12.setText("Low-Pass Butterworth Spectrum 1")
             self.pushButton.setText("Apply Ideal Low-Pass Filter")
 
-    #https://www.youtube.com/watch?v=C48AI4FvOKE&t=330s
+    # Les calculs des transformées de Fourier avec les fonctions numpy ont été pris de cette vidéo Youtube :
+    # https://www.youtube.com/watch?v=C48AI4FvOKE
     def applyIdealFilter(self):
         if self.imageAdded:
+            #Le code pour effectuer les transformées de Fourrier à l'aide de la librairie numpy ont été pris de
+            #la vidéo Youtube suivante : https://www.youtube.com/watch?v=C48AI4FvOKE
+            #Les calculs de filtres s'inspirent en partie de cette vidéo et sont validés par nos notes de cours fournies
+            #sur Moodle
+
             gray_src = cv2.cvtColor(self.src, cv2.COLOR_BGR2GRAY)
 
             F = np.fft.fft2(gray_src)
